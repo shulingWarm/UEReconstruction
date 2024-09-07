@@ -1,5 +1,5 @@
-.\Content\Characters\**
-.\Binaries\**
-.\Intermediate\**
-.\Saved\**
-.\DerivedDataCache\**
+Content/Characters
+Binaries
+Intermediate
+Saved
+DerivedDataCache
