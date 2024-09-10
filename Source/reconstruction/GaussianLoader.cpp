@@ -632,10 +632,15 @@ void AGaussianLoader::preload3DGaussian()
 	unlockTexture(*colorTexture);
 	unlockTexture(*sizeTexture);
 	unlockTexture(*rotTexture);
+	//同时载入 view range
+	this->viewTextureRange = preloadGaussianViewRange("E:/temp/viewRange.bin",
+		gaussianPointNum, textureSize.X, textureSize.Y);
 	textureFinalUpdate(*posTexture);
 	textureFinalUpdate(*colorTexture);
 	textureFinalUpdate(*sizeTexture);
 	textureFinalUpdate(*rotTexture);
+	//对于view range也要在最后调用纹理的最终更新
+	textureFinalUpdate(*viewTextureRange);
 }
 
 FVector2D AGaussianLoader::getSampleStep()
