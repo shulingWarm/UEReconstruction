@@ -528,6 +528,60 @@ static void textureFinalUpdate(UTexture2D& texture)
 	texture.AddToRoot();
 }
 
+//提前载入每个3D gaussian的角度范围
+static UTexture2D* preloadGaussianViewRange(std::string filePath,
+	uint32_t gaussianNum, //这是预期的gaussian的个数
+	uint32_t xTextureSize, 
+	uint32_t yTextureSize
+)
+{
+	//打开文件
+	std::fstream fileHandle(filePath, std::ios::in | std::ios::binary);
+	if (!fileHandle.is_open())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Cannot open %s \n"), *FString(filePath.c_str()));
+	}
+	//读取3D gaussian的个数
+	uint32 fileGaussian;
+	fileHandle.read((char*)&fileGaussian, sizeof(uint32));
+	if (fileGaussian != gaussianNum)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Gaussian num not equal\n"));
+	}
+	//初始化范围数据对应的texture
+	UTexture2D* texturePtr = UTexture2D::CreateTransient(
+		xTextureSize, yTextureSize, PF_FloatRGBA
+	);
+	//获取texture里面实际的数据
+	baseConfigTexture(*texturePtr);
+	//获取颜色纹理里面的数据
+	auto viewData = getTextureData<FFloat16>(*texturePtr);
+	//临时用来读取范围的操作
+	float rangeBuffer[4];
+	for (uint32 idView = 0; idView < gaussianNum; ++idView)
+	{
+		//读取view里面的数据
+		fileHandle.read((char*)rangeBuffer, sizeof(float) * 4);
+		//把数据临时转换成fp16
+		auto viewHead = viewData + idView * 4;
+		//把读取到的4个数据放到纹理里面
+		for (int i = 0; i < 4; ++i)
+			viewHead[i] = FFloat16(rangeBuffer[i]);
+	}
+	//把后续的无效纹理写成0
+	uint32 pixelNum = xTextureSize * yTextureSize;
+	for (uint32 idView = gaussianNum; idView < pixelNum; ++idView)
+	{
+		auto viewHead = viewData + idView * 4;
+		for (int i = 0; i < 4; ++i)
+			viewHead[i] = FFloat16(0);
+	}
+	fileHandle.close();
+	//给texture的数据解锁
+	unlockTexture(*texturePtr);
+	return texturePtr;
+}
+
 //在这里预加载3D 高斯
 void AGaussianLoader::preload3DGaussian()
 {

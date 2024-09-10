@@ -36,6 +36,10 @@ public:
 	UPROPERTY(BlueprintReadWrite)
 	UTexture2D* colorTexture;
 
+	//view的视角范围对应的纹理
+	UPROPERTY(BlueprintReadWrite)
+	UTexture2D* viewTextureRange;
+
 	//size信息的纹理
 	UPROPERTY(BlueprintReadWrite)
 	UTexture2D* sizeTexture;
