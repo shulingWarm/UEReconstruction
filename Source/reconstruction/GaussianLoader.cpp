@@ -586,7 +586,7 @@ static UTexture2D* preloadGaussianViewRange(std::string filePath,
 void AGaussianLoader::preload3DGaussian()
 {
 	//要读取的点云路径
-	std::string plyFile = "E:/temp/test.ply";
+	std::string plyFile = "E:/temp/splat.ply";
 	std::ifstream fileHandle(plyFile, std::ios::binary);
 	//读取ply的数据头
 	PlyHeader header;
