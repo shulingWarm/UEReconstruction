@@ -7,6 +7,7 @@
 #include<sstream>
 #include<vector>
 #include<iostream>
+#include"DynamicMesh/DynamicMesh3.h"
 
 //ply格式下的属性
 class PlyProperty
@@ -447,6 +448,7 @@ static void assignTextureData(
 	int pixelNum //纹理的像素数
 )
 {
+	
 	//用于读取缓冲区的数据大小，目前暂时不考虑扩展性
 	const int BUFFER_SIZE = 62;
 	//每个点在纹理里面对应的数据块
@@ -585,6 +587,11 @@ static UTexture2D* preloadGaussianViewRange(std::string filePath,
 //在这里预加载3D 高斯
 void AGaussianLoader::preload3DGaussian()
 {
+	////用下面这种方法可以新建dynamic mesh
+	//UE::Geometry::FDynamicMesh3 tempMesh;
+	//FVector3d tempVertex(1, 2, 3);
+	////把这个vertex添加到dynamic mesh
+	//tempMesh.AppendVertex(tempVertex);
 	//要读取的点云路径
 	std::string plyFile = "E:/temp/splat.ply";
 	std::ifstream fileHandle(plyFile, std::ios::binary);
@@ -633,18 +640,20 @@ void AGaussianLoader::preload3DGaussian()
 	unlockTexture(*sizeTexture);
 	unlockTexture(*rotTexture);
 	//同时载入 view range
-	this->viewTextureRange = preloadGaussianViewRange("E:/temp/viewRange.bin",
-		gaussianPointNum, textureSize.X, textureSize.Y);
+	//this->viewTextureRange = preloadGaussianViewRange("E:/temp/viewRange.bin",
+	//	gaussianPointNum, textureSize.X, textureSize.Y);
 	textureFinalUpdate(*posTexture);
 	textureFinalUpdate(*colorTexture);
 	textureFinalUpdate(*sizeTexture);
 	textureFinalUpdate(*rotTexture);
+	this->viewTextureRange = this->posTexture;
 	//对于view range也要在最后调用纹理的最终更新
-	textureFinalUpdate(*viewTextureRange);
+	// textureFinalUpdate(*viewTextureRange);
 }
 
 FVector2D AGaussianLoader::getSampleStep()
 {
+	
 	//如果还没有texture，那就随便返回
 	if (colorTexture == nullptr)
 	{
@@ -663,5 +672,68 @@ int AGaussianLoader::getSampleSize(int idDim)
 	if (idDim == 0)
 		return colorTexture->GetSizeX();
 	return gaussianPointNum / colorTexture->GetSizeX() + 1;
+}
+
+//测试读取二进制的mesh
+static void testReadMesh(std::string meshFilePath)
+{
+	//打开对应的输入流
+	std::fstream fileHandle;
+	fileHandle.open(meshFilePath, std::ios::in | std::ios::binary);
+	//读取点和面的个数
+	uint32 vertexNum, faceNum;
+	fileHandle.read((char*)&vertexNum, sizeof(uint32));
+	fileHandle.read((char*)&faceNum, sizeof(uint32));
+	//打印面的个数和点的个数
+	UE_LOG(LogTemp, Warning, TEXT("Vertex and face: %d %d\n"), vertexNum, faceNum);
+	//读取三个点，看一下前三个点的坐标能不能读取正常
+	float vertexBuffer[3];
+	fileHandle.read((char*)vertexBuffer, sizeof(float) * 3);
+	//打印读取到的三个点
+	UE_LOG(LogTemp, Warning, TEXT("%f %f %f\n"), vertexBuffer[0], vertexBuffer[1], vertexBuffer[2]);
+};
+
+UDynamicMesh* AGaussianLoader::getTestMesh()
+{
+	//用于测试的mesh的路径
+	std::string meshFilePath = "E:/temp/binaryMesh.bin";
+	//读取mesh文件
+	std::fstream fileHandle(meshFilePath, std::ios::in | std::ios::binary);
+	//读取点个数和面片个数
+	uint32 vertexNum, faceNum;
+	fileHandle.read((char*)&vertexNum, sizeof(uint32));
+	fileHandle.read((char*)&faceNum, sizeof(uint32));
+	//在这里新建一个UDynamicMesh的实体
+	UDynamicMesh* tempMesh = NewObject<UDynamicMesh>();
+	//获得它对应的底层mesh实体
+	UE::Geometry::FDynamicMesh3& meshRef = tempMesh->GetMeshRef();
+	//临时读取数据的buffer
+	float pointBuffer[3];
+	//遍历读取每个节点
+	for (uint32 idVertex = 0; idVertex < vertexNum; ++idVertex)
+	{
+		//读取点数据
+		fileHandle.read((char*)pointBuffer, sizeof(float) * 3);
+		//往里面添加节点
+		meshRef.AppendVertex({ pointBuffer[0],-pointBuffer[1],-(pointBuffer[2] + 230)});
+	}
+	//face的buffer
+	uint32 faceBuffer[3];
+
+	//遍历每个面
+	for (uint32 idFace = 0; idFace < faceNum; ++idFace)
+	{
+		fileHandle.read((char*)faceBuffer, sizeof(uint32) * 3);
+		meshRef.AppendTriangle(faceBuffer[0], faceBuffer[1], faceBuffer[2]);
+	}
+	
+	////往mesh里面添加节点
+	//int vertex1 = meshRef.AppendVertex({ 0,0,0 });
+	//int vertex2 = meshRef.AppendVertex({ 0,0,100 });
+	//int vertex3 = meshRef.AppendVertex({ 0,100,0 });
+	//UE_LOG(LogTemp,Warning,TEXT("vertex id: %d %d %d\n"),vertex1,vertex2,vertex3);
+	////把上面的三个角点弄成mesh
+	//meshRef.AppendTriangle(0, 1, 2);
+	return tempMesh;
 }
 

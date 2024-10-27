@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
-
+#include"UDynamicMesh.h"
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "GaussianLoader.generated.h"
@@ -58,9 +58,13 @@ public:
 
 	//获取纹理采样时的采样步长
 	UFUNCTION(BlueprintCallable)
-	FVector2D getSampleStep();
+	FVector2D getSampleStep(); 
 
 	//获取粒子系统原始的采样维度
 	UFUNCTION(BlueprintCallable)
 	int getSampleSize(int idDim);
+
+	//获取动态的mesh，这是用来测试动态生成mesh的效果的
+	UFUNCTION(BlueprintCallable)
+	UDynamicMesh* getTestMesh();
 };

@@ -9,7 +9,10 @@ public class reconstruction : ModuleRules
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 
         PublicDependencyModuleNames.AddRange(new string[] { 
-            "Core", "CoreUObject", "Engine", "InputCore"});
+            "Core", "CoreUObject", "Engine", "InputCore","ProceduralMeshComponent",
+            "GeometryFramework",
+            "GeometryCore",
+            "DynamicMesh"});
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });
 
