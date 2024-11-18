@@ -693,47 +693,109 @@ static void testReadMesh(std::string meshFilePath)
 	UE_LOG(LogTemp, Warning, TEXT("%f %f %f\n"), vertexBuffer[0], vertexBuffer[1], vertexBuffer[2]);
 };
 
+//用于描述一个mesh的数据结构
+class Mesh
+{
+public:
+	//Mesh的节点列表 每三个数字表示一个坐标
+	std::vector<float> vertexList;
+	//Mesh的面列表 每3个id表示一个face
+	std::vector<uint32_t> faceList;
+};
+
+//读取ply文件的数据头
+void readPlyHead(std::fstream& fileHandle, Mesh& mesh)
+{
+	std::string readBuffer;
+	std::string lineBuffer;
+	//一直读取直接读取到end head
+	uint32_t vertexNum,faceNum;
+	while(true)
+	{
+		std::getline(fileHandle,lineBuffer);
+		std::stringstream strStream(lineBuffer);
+		bool endFlag = false;
+		while(!strStream.eof())
+		{
+			strStream >> readBuffer;
+			if (readBuffer == "vertex")
+			{
+				strStream >> readBuffer;
+				vertexNum = std::atoi(readBuffer.c_str());
+			}
+			else if (readBuffer == "face")
+			{
+				strStream >> readBuffer;
+				faceNum = std::atoi(readBuffer.c_str());
+			}
+			else if (readBuffer == "end_header")
+			{
+				endFlag = true;
+				break;
+			}
+		}
+		if(endFlag)
+			break;
+	}
+	//给mesh里面的数据提前开辟空间
+	mesh.vertexList.resize(vertexNum*3);
+	mesh.faceList.resize(faceNum*3);
+}
+
+//按照二进制来读取mesh
+void readMeshBinary(std::string filePath,Mesh& mesh)
+{
+	std::fstream fileHandle;
+	fileHandle.open(filePath,std::ios::in|std::ios::binary);
+	if(!fileHandle.is_open())
+	{
+		std::cout<<"Cannot open "<<filePath<<std::endl;
+		return;
+	}
+	//读取ply文件的数据头
+	readPlyHead(fileHandle,mesh);
+	//读取点的二进制数据
+	fileHandle.read((char*)mesh.vertexList.data(),mesh.vertexList.size()*sizeof(float));
+	unsigned char idNum;
+	//读取二进制数据里面的face
+	for(int i=0;i+2<mesh.faceList.size();i+=3)
+	{
+		auto faceHead = &mesh.faceList[i];
+		//读取id的个数，这个东西应该是固定为3的
+		fileHandle.read((char*)&idNum,sizeof(idNum));
+		//读取实际的id内容
+		fileHandle.read((char*)faceHead,sizeof(uint32_t)*3);
+	}
+	fileHandle.close();
+}
+
 UDynamicMesh* AGaussianLoader::getTestMesh()
 {
 	//用于测试的mesh的路径
-	std::string meshFilePath = "E:/temp/binaryMesh.bin";
-	//读取mesh文件
-	std::fstream fileHandle(meshFilePath, std::ios::in | std::ios::binary);
-	//读取点个数和面片个数
-	uint32 vertexNum, faceNum;
-	fileHandle.read((char*)&vertexNum, sizeof(uint32));
-	fileHandle.read((char*)&faceNum, sizeof(uint32));
+	std::string meshFilePath = "E:/temp/south-building/sparse/0/mesh_transform.ply";
+	//读取二进制的mesh
+	Mesh mesh;
+	readMeshBinary(meshFilePath,mesh);
 	//在这里新建一个UDynamicMesh的实体
 	UDynamicMesh* tempMesh = NewObject<UDynamicMesh>();
 	//获得它对应的底层mesh实体
 	UE::Geometry::FDynamicMesh3& meshRef = tempMesh->GetMeshRef();
-	//临时读取数据的buffer
-	float pointBuffer[3];
-	//遍历读取每个节点
-	for (uint32 idVertex = 0; idVertex < vertexNum; ++idVertex)
+	//遍历所有的点
+	for(int i=0;i+2<mesh.vertexList.size();i+=3)
 	{
-		//读取点数据
-		fileHandle.read((char*)pointBuffer, sizeof(float) * 3);
-		//往里面添加节点
-		meshRef.AppendVertex({ pointBuffer[0],-pointBuffer[1],-(pointBuffer[2] + 230)});
+		//当前点的头指针
+		auto pointHead = &mesh.vertexList[i];
+		//把这个点添加到UE形式的mesh里面
+		meshRef.AppendVertex({ pointHead[0],-pointHead[1],-(pointHead[2])});
 	}
-	//face的buffer
-	uint32 faceBuffer[3];
-
-	//遍历每个面
-	for (uint32 idFace = 0; idFace < faceNum; ++idFace)
+	//遍历所有的面
+	for(int i=0;i+2<mesh.faceList.size();i+=3)
 	{
-		fileHandle.read((char*)faceBuffer, sizeof(uint32) * 3);
-		meshRef.AppendTriangle(faceBuffer[0], faceBuffer[1], faceBuffer[2]);
+		//当前的面id的起始
+		auto faceIdHead = &mesh.faceList[i];
+		//把这个面添加到面列表里面
+		meshRef.AppendTriangle(faceIdHead[0], faceIdHead[1], faceIdHead[2]);
 	}
-	
-	////往mesh里面添加节点
-	//int vertex1 = meshRef.AppendVertex({ 0,0,0 });
-	//int vertex2 = meshRef.AppendVertex({ 0,0,100 });
-	//int vertex3 = meshRef.AppendVertex({ 0,100,0 });
-	//UE_LOG(LogTemp,Warning,TEXT("vertex id: %d %d %d\n"),vertex1,vertex2,vertex3);
-	////把上面的三个角点弄成mesh
-	//meshRef.AppendTriangle(0, 1, 2);
 	return tempMesh;
 }
 
