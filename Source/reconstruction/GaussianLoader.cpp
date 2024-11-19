@@ -786,7 +786,7 @@ UDynamicMesh* AGaussianLoader::getTestMesh()
 		//当前点的头指针
 		auto pointHead = &mesh.vertexList[i];
 		//把这个点添加到UE形式的mesh里面
-		meshRef.AppendVertex({ pointHead[0],-pointHead[1],-(pointHead[2])});
+		meshRef.AppendVertex({ pointHead[0]*100,-pointHead[2]*100,-(pointHead[1])*100});
 	}
 	//遍历所有的面
 	for(int i=0;i+2<mesh.faceList.size();i+=3)
